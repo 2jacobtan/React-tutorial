@@ -14,47 +14,37 @@ function Square(props) {
 }
 
 class Board extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-      squares: Array(9).fill(null),
-      xIsNext: true,
-      winner: null
-    };
-  }
-
   handleClick(j) {
-    if (this.state.winner) return;
+    if (this.props.boardState.squares[j]
+      || this.props.boardState.winner)
+      return;
 
-    const squares = this.state.squares.slice();
-    squares[j] = this.state.xIsNext ? 'X' : 'O';
-    const winner = calculateWinner(squares)
-    
-    this.setState({
-      squares: squares,
-      xIsNext: !this.state.xIsNext,
-      winner: winner
-    });
-    
+    const squares = this.props.boardState.squares.slice();
+    squares[j] = this.props.boardState.xIsNext ? 'X' : 'O';
+
     this.props.updateGameHistory(squares);
   }
 
   renderSquare(i) {
     return (
       <Square
-        value={this.state.squares[i]}
-        onClick={() => this.handleClick(i)}
+        value={this.props.boardState.squares[i]}
+        onClick={
+          this.props.boardState.winner
+          ? null
+          : () => this.handleClick(i)
+        }
       />
     );
   }
 
   render() {
     let status =
-      this.state.winner
-      ? "Winner: " + this.state.winner
-      : 'Next player: '
-        + (this.state.xIsNext ? 'X' : 'O');
-        
+      this.props.boardState.winner
+        ? "Winner: " + this.props.boardState.winner
+        : 'Next player: '
+        + (this.props.boardState.xIsNext ? 'X' : 'O');
+
     return (
       <div>
         <div className="status">{status}</div>
@@ -82,25 +72,55 @@ class Game extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      history: []
+      history: [{
+        squares: Array(9).fill(null),
+        winner: null,
+        xIsNext: true
+      }],
+      currentTurn: 0,
     };
   }
 
   updateHistory(current_squares) {
     this.setState({
-      history: [...this.state.history, current_squares]
+      history: [...this.state.history.slice(0,this.state.currentTurn+1),
+        {
+          squares: current_squares,
+          winner: calculateWinner(current_squares),
+          xIsNext: !this.state.history[this.state.currentTurn].xIsNext
+        }
+      ],
+      currentTurn: this.state.currentTurn + 1,      
     });
   }
-  
+
+  jumpTo(turn) {
+    this.setState({
+      currentTurn: turn
+    });
+  }
+
   render() {
+    const moves = this.state.history.map((state, turn) => {
+      const desc = "Go to turn #" + turn;
+      return (
+        <li>
+          <button onClick={() => this.jumpTo(turn)}>{desc}</button>
+        </li>
+      )
+    });
+
     return (
       <div className="game">
         <div className="game-board">
-          <Board updateGameHistory={(s)=>this.updateHistory(s)} />
+          <Board
+            boardState={this.state.history[this.state.currentTurn]}
+            updateGameHistory={(s) => this.updateHistory(s)}
+          />
         </div>
         <div className="game-info">
           <div>{/* status */}</div>
-          <ol>{/* TODO */}</ol>
+          <ol>{moves}</ol>
         </div>
       </div>
     );
